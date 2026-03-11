@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+}
+
+.app {
+  position: fixed;
+  inset: 0;
+
+  background-color: white;
+  background-image: linear-gradient(to right, #ddd 1px, transparent 1px),
+    linear-gradient(to bottom, #ddd 1px, transparent 1px);
+
+  background-size: 1cm 1cm; /* mỗi ô 1cm */
+}
+
+/* Toolbar ở dưới */
+.toolbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  background: white;
+  padding: 10px 15px;
+  border-radius: 10px;
+
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Stage canvas */
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
