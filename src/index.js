@@ -38,7 +38,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
     {
       name: "Square",
       x: 200,
@@ -51,7 +50,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
     {
       name: "Rectangle",
       type: "rect",
@@ -64,7 +62,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
     {
       name: "Diamond",
       x: 120,
@@ -77,7 +74,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
     {
       name: "Parallelogram",
       x: 260,
@@ -90,7 +86,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
     {
       name: "Circle",
       type: "circle",
@@ -102,8 +97,6 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
-
-    // HÌNH THANG MỚI
     {
       name: "Trapezoid",
       x: 420,
@@ -242,6 +235,25 @@ class App extends React.Component {
       onClick: () => {
         this.bringToFront(p.name);
         this.setState({ selectedId: p.name });
+      },
+
+      // ⭐ DOUBLE CLICK COPY
+      onDblClick: () => {
+        this.saveHistory();
+
+        this.setState((prev) => {
+          const newPiece = {
+            ...p,
+            name: p.name + "_" + Date.now(),
+            x: p.x + 20,
+            y: p.y + 20,
+          };
+
+          return {
+            pieces: [...prev.pieces, newPiece],
+            selectedId: newPiece.name,
+          };
+        });
       },
 
       onDragStart: () => {
