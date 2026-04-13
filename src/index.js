@@ -20,7 +20,16 @@ function roundToNearest(num) {
 }
 
 const COLORS = [
-  "red","orange","yellow","green","cyan","blue","purple","pink","gray","black",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "cyan",
+  "blue",
+  "purple",
+  "pink",
+  "gray",
+  "black",
 ];
 
 const PX_PER_CM = 37.8;
@@ -241,8 +250,7 @@ class App extends React.Component {
     this.zoomShape(i, e.evt.deltaY > 0 ? -0.1 : 0.1);
   };
 
-  getDistance = (r) =>
-    Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
+  getDistance = (r) => Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
 
   renderShape = (p, i) => {
     const isSelected = this.state.selectedId === p.name;
