@@ -1,14 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import {
-  Stage,
-  Layer,
-  Line,
-  Rect,
-  Circle,
-  Text,
-  useStrictMode,
-} from "react-konva";
+import { Stage, Layer, Line, Rect, Circle, Text, useStrictMode } from "react-konva";
 import "./styles.css";
 
 useStrictMode(true);
@@ -20,16 +12,7 @@ function roundToNearest(num) {
 }
 
 const COLORS = [
-  "red",
-  "orange",
-  "yellow",
-  "green",
-  "cyan",
-  "blue",
-  "purple",
-  "pink",
-  "gray",
-  "black",
+  "red","orange","yellow","green","cyan","blue","purple","pink","gray","black",
 ];
 
 const PX_PER_CM = 37.8;
@@ -38,6 +21,7 @@ const initialState = {
   pieces: [
     {
       name: "RightTriangle",
+      type: "rightTriangle",
       x: 650,
       y: 120,
       offsetX: 0,
@@ -144,6 +128,7 @@ class App extends React.Component {
       stageWidth: window.innerWidth,
       stageHeight: window.innerHeight,
 
+      // ⭐ THÊM RULER
       rulerVisible: false,
       ruler: {
         x1: 200,
@@ -175,13 +160,10 @@ class App extends React.Component {
   undo = () => {
     this.setState((prev) => {
       if (prev.history.length === 0) return prev;
-
       const previous = prev.history[prev.history.length - 1];
-      const newHistory = prev.history.slice(0, -1);
-
       return {
         pieces: previous,
-        history: newHistory,
+        history: prev.history.slice(0, -1),
       };
     });
   };
@@ -205,9 +187,7 @@ class App extends React.Component {
   };
 
   handleKeyDown = (e) => {
-    if (e.key.toLowerCase() === "r") {
-      if (!this.state.selectedId) return;
-
+    if (e.key.toLowerCase() === "r" && this.state.selectedId) {
       this.saveHistory();
       this.setState((prev) => ({
         pieces: prev.pieces.map((p) =>
@@ -218,70 +198,57 @@ class App extends React.Component {
       }));
     }
 
-    if (e.key.toLowerCase() === "c") {
-      if (!this.state.selectedId) return;
-
+    if (e.key.toLowerCase() === "c" && this.state.selectedId) {
       this.saveHistory();
       this.setState((prev) => ({
         pieces: prev.pieces.map((p) => {
           if (p.name !== prev.selectedId) return p;
           const index = COLORS.indexOf(p.fill);
-          const nextColor = COLORS[(index + 1) % COLORS.length];
-          return { ...p, fill: nextColor };
+          return { ...p, fill: COLORS[(index + 1) % COLORS.length] };
         }),
       }));
     }
 
-    if (e.ctrlKey && e.key === "z") {
-      this.undo();
-    }
-  };
-
-  handleWheel = (e) => {
-    e.evt.preventDefault();
-
-    const i = this.state.pieces.findIndex(
-      (p) => p.name === this.state.selectedId
-    );
-
-    if (i === -1) return;
-
-    const direction = e.evt.deltaY > 0 ? -0.1 : 0.1;
-    this.zoomShape(i, direction);
+    if (e.ctrlKey && e.key === "z") this.undo();
   };
 
   zoomShape = (i, delta) => {
     this.saveHistory();
-
     this.setState((prev) => {
       const pieces = [...prev.pieces];
-      const current = pieces[i].scale || 1;
-
-      let next = current + delta;
+      let next = (pieces[i].scale || 1) + delta;
       next = Math.max(0.3, Math.min(next, 3));
-
       pieces[i].scale = next;
       return { pieces };
     });
   };
 
+  handleWheel = (e) => {
+    e.evt.preventDefault();
+    const i = this.state.pieces.findIndex(
+      (p) => p.name === this.state.selectedId
+    );
+    if (i === -1) return;
+    this.zoomShape(i, e.evt.deltaY > 0 ? -0.1 : 0.1);
+  };
+
+  getDistance = (r) =>
+    Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
+
   renderShape = (p, i) => {
     const isSelected = this.state.selectedId === p.name;
 
-    const commonEvents = {
+    const common = {
       draggable: p.draggable,
-      scaleX: p.scale || 1,
-      scaleY: p.scale || 1,
+      scaleX: p.scale,
+      scaleY: p.scale,
       stroke: isSelected ? "red" : undefined,
       strokeWidth: isSelected ? 3 : 0,
-
-      onClick: () => {
-        this.bringToFront(p.name);
-        this.setState({ selectedId: p.name });
-      },
-
-      onDragStart: () => this.saveHistory(),
-
+      onClick: () =>
+        this.setState({ selectedId: p.name }, () =>
+          this.bringToFront(p.name)
+        ),
+      onDragStart: this.saveHistory,
       onDragEnd: (e) => {
         this.setState((prev) => ({
           pieces: prev.pieces.map((piece) =>
@@ -295,22 +262,23 @@ class App extends React.Component {
           ),
         }));
       },
-
       onWheel: this.handleWheel,
     };
 
-    if (p.type === "circle") {
-      return <Circle key={p.name} {...p} {...commonEvents} />;
-    }
+    if (p.type === "circle") return <Circle key={p.name} {...p} {...common} />;
 
-    if (p.type === "rect") {
-      return <Rect key={p.name} {...p} {...commonEvents} />;
-    }
+    if (p.type === "rect")
+      return <Rect key={p.name} {...p} {...common} />;
 
-    return <Line key={p.name} {...p} closed {...commonEvents} />;
+    return (
+      <Line
+        key={p.name}
+        {...p}
+        closed
+        {...common}
+      />
+    );
   };
-
-  getDistance = (r) => Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
 
   render() {
     const r = this.state.ruler;
@@ -322,8 +290,8 @@ class App extends React.Component {
           <button onClick={this.undo}>Undo</button>
           <button
             onClick={() =>
-              this.setState((prev) => ({
-                rulerVisible: !prev.rulerVisible,
+              this.setState((p) => ({
+                rulerVisible: !p.rulerVisible,
               }))
             }
           >
@@ -333,8 +301,11 @@ class App extends React.Component {
 
         <Stage width={this.state.stageWidth} height={this.state.stageHeight}>
           <Layer>
-            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
+            {this.state.pieces.map((p, i) =>
+              this.renderShape(p, i)
+            )}
 
+            {/* ⭐ RULER */}
             {this.state.rulerVisible && (
               <>
                 <Line
@@ -351,9 +322,9 @@ class App extends React.Component {
                   fill="red"
                   draggable
                   onDragMove={(e) =>
-                    this.setState((prev) => ({
+                    this.setState((p) => ({
                       ruler: {
-                        ...prev.ruler,
+                        ...p.ruler,
                         x1: e.target.x(),
                         y1: e.target.y(),
                       },
@@ -368,9 +339,9 @@ class App extends React.Component {
                   fill="red"
                   draggable
                   onDragMove={(e) =>
-                    this.setState((prev) => ({
+                    this.setState((p) => ({
                       ruler: {
-                        ...prev.ruler,
+                        ...p.ruler,
                         x2: e.target.x(),
                         y2: e.target.y(),
                       },
@@ -381,9 +352,8 @@ class App extends React.Component {
                 <Text
                   x={(r.x1 + r.x2) / 2}
                   y={(r.y1 + r.y2) / 2 - 10}
-                  text={`${(this.getDistance(r) / 37.8).toFixed(2)} cm`}
+                  text={`${(this.getDistance(r) / PX_PER_CM).toFixed(2)} cm`}
                   fontSize={16}
-                  fill="black"
                 />
               </>
             )}
