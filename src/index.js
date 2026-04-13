@@ -310,8 +310,7 @@ class App extends React.Component {
     return <Line key={p.name} {...p} closed {...commonEvents} />;
   };
 
-  getDistance = (r) =>
-    Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
+  getDistance = (r) => Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
 
   render() {
     const r = this.state.ruler;
@@ -379,13 +378,13 @@ class App extends React.Component {
                   }
                 />
 
-<Text
-  x={(r.x1 + r.x2) / 2}
-  y={(r.y1 + r.y2) / 2 - 10}
-  text={`${(this.getDistance(r) / 37.8).toFixed(2)} cm`}
-  fontSize={16}
-  fill="black"
-/>
+                <Text
+                  x={(r.x1 + r.x2) / 2}
+                  y={(r.y1 + r.y2) / 2 - 10}
+                  text={`${(this.getDistance(r) / 37.8).toFixed(2)} cm`}
+                  fontSize={16}
+                  fill="black"
+                />
               </>
             )}
           </Layer>
