@@ -1,6 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Stage, Layer, Line, Rect, Circle, useStrictMode } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Line,
+  Rect,
+  Circle,
+  Text,
+  useStrictMode,
+} from "react-konva";
 import "./styles.css";
 
 useStrictMode(true);
@@ -24,8 +32,22 @@ const COLORS = [
   "black",
 ];
 
+const PX_PER_CM = 37.8;
+
 const initialState = {
   pieces: [
+    {
+      name: "RightTriangle",
+      x: 650,
+      y: 120,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      points: [0, 0, 120, 0, 0, 120],
+      fill: "brown",
+      draggable: true,
+      scale: 1,
+    },
     {
       name: "Triangle",
       x: 80,
@@ -121,6 +143,14 @@ class App extends React.Component {
       selectedId: null,
       stageWidth: window.innerWidth,
       stageHeight: window.innerHeight,
+
+      rulerVisible: false,
+      ruler: {
+        x1: 200,
+        y1: 500,
+        x2: 500,
+        y2: 500,
+      },
     };
   }
 
@@ -179,7 +209,6 @@ class App extends React.Component {
       if (!this.state.selectedId) return;
 
       this.saveHistory();
-
       this.setState((prev) => ({
         pieces: prev.pieces.map((p) =>
           p.name === prev.selectedId
@@ -193,7 +222,6 @@ class App extends React.Component {
       if (!this.state.selectedId) return;
 
       this.saveHistory();
-
       this.setState((prev) => ({
         pieces: prev.pieces.map((p) => {
           if (p.name !== prev.selectedId) return p;
@@ -209,14 +237,29 @@ class App extends React.Component {
     }
   };
 
+  handleWheel = (e) => {
+    e.evt.preventDefault();
+
+    const i = this.state.pieces.findIndex(
+      (p) => p.name === this.state.selectedId
+    );
+
+    if (i === -1) return;
+
+    const direction = e.evt.deltaY > 0 ? -0.1 : 0.1;
+    this.zoomShape(i, direction);
+  };
+
   zoomShape = (i, delta) => {
     this.saveHistory();
 
     this.setState((prev) => {
       const pieces = [...prev.pieces];
       const current = pieces[i].scale || 1;
+
       let next = current + delta;
       next = Math.max(0.3, Math.min(next, 3));
+
       pieces[i].scale = next;
       return { pieces };
     });
@@ -227,8 +270,8 @@ class App extends React.Component {
 
     const commonEvents = {
       draggable: p.draggable,
-      scaleX: p.scale,
-      scaleY: p.scale,
+      scaleX: p.scale || 1,
+      scaleY: p.scale || 1,
       stroke: isSelected ? "red" : undefined,
       strokeWidth: isSelected ? 3 : 0,
 
@@ -237,36 +280,7 @@ class App extends React.Component {
         this.setState({ selectedId: p.name });
       },
 
-      // ⭐ DOUBLE CLICK COPY
-      onDblClick: () => {
-        this.saveHistory();
-
-        this.setState((prev) => {
-          const newPiece = {
-            ...p,
-            name: p.name + "_" + Date.now(),
-            x: p.x + 20,
-            y: p.y + 20,
-          };
-
-          return {
-            pieces: [...prev.pieces, newPiece],
-            selectedId: newPiece.name,
-          };
-        });
-      },
-
-      onDragStart: () => {
-        this.saveHistory();
-        this.bringToFront(p.name);
-        this.setState({ selectedId: p.name });
-      },
-
-      onWheel: (e) => {
-        e.evt.preventDefault();
-        const direction = e.evt.deltaY > 0 ? -0.1 : 0.1;
-        this.zoomShape(i, direction);
-      },
+      onDragStart: () => this.saveHistory(),
 
       onDragEnd: (e) => {
         this.setState((prev) => ({
@@ -281,75 +295,103 @@ class App extends React.Component {
           ),
         }));
       },
+
+      onWheel: this.handleWheel,
     };
 
     if (p.type === "circle") {
-      return (
-        <Circle
-          key={p.name}
-          x={p.x}
-          y={p.y}
-          radius={p.radius}
-          rotation={p.rotation}
-          fill={p.fill}
-          {...commonEvents}
-        />
-      );
+      return <Circle key={p.name} {...p} {...commonEvents} />;
     }
 
     if (p.type === "rect") {
-      return (
-        <Rect
-          key={p.name}
-          x={p.x}
-          y={p.y}
-          width={p.width}
-          height={p.height}
-          offsetX={p.width / 2}
-          offsetY={p.height / 2}
-          rotation={p.rotation}
-          fill={p.fill}
-          {...commonEvents}
-        />
-      );
+      return <Rect key={p.name} {...p} {...commonEvents} />;
     }
 
-    return (
-      <Line
-        key={p.name}
-        x={p.x}
-        y={p.y}
-        offsetX={p.offsetX}
-        offsetY={p.offsetY}
-        rotation={p.rotation}
-        points={p.points}
-        fill={p.fill}
-        closed
-        {...commonEvents}
-      />
-    );
+    return <Line key={p.name} {...p} closed {...commonEvents} />;
   };
 
+  getDistance = (r) => Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
+
   render() {
+    const r = this.state.ruler;
+
     return (
       <div className="app">
-        <Stage
-          width={this.state.stageWidth}
-          height={this.state.stageHeight}
-          style={{ background: "transparent" }}
-        >
-          <Layer>
-            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
-          </Layer>
-        </Stage>
-
         <div className="toolbar">
           <button onClick={this.resetAllPieces}>Reset</button>
           <button onClick={this.undo}>Undo</button>
+          <button
+            onClick={() =>
+              this.setState((prev) => ({
+                rulerVisible: !prev.rulerVisible,
+              }))
+            }
+          >
+            Toggle Ruler
+          </button>
         </div>
+
+        <Stage width={this.state.stageWidth} height={this.state.stageHeight}>
+          <Layer>
+            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
+
+            {this.state.rulerVisible && (
+              <>
+                <Line
+                  points={[r.x1, r.y1, r.x2, r.y2]}
+                  stroke="black"
+                  strokeWidth={3}
+                  dash={[10, 5]}
+                />
+
+                <Circle
+                  x={r.x1}
+                  y={r.y1}
+                  radius={6}
+                  fill="red"
+                  draggable
+                  onDragMove={(e) =>
+                    this.setState((prev) => ({
+                      ruler: {
+                        ...prev.ruler,
+                        x1: e.target.x(),
+                        y1: e.target.y(),
+                      },
+                    }))
+                  }
+                />
+
+                <Circle
+                  x={r.x2}
+                  y={r.y2}
+                  radius={6}
+                  fill="red"
+                  draggable
+                  onDragMove={(e) =>
+                    this.setState((prev) => ({
+                      ruler: {
+                        ...prev.ruler,
+                        x2: e.target.x(),
+                        y2: e.target.y(),
+                      },
+                    }))
+                  }
+                />
+
+                <Text
+                  x={(r.x1 + r.x2) / 2}
+                  y={(r.y1 + r.y2) / 2 - 10}
+                  text={`${(this.getDistance(r) / 37.8).toFixed(2)} cm`}
+                  fontSize={16}
+                  fill="black"
+                />
+              </>
+            )}
+          </Layer>
+        </Stage>
       </div>
     );
   }
 }
 
-ReactDOM.render(<App />, document.getElementById("root"));  
+ReactDOM.render(<App />, document.getElementById("root"));
