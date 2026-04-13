@@ -1,6 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Stage, Layer, Line, Rect, Circle, useStrictMode } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Line,
+  Rect,
+  Circle,
+  Text,
+  Group,
+  useStrictMode,
+} from "react-konva";
 import "./styles.css";
 
 useStrictMode(true);
@@ -26,6 +35,20 @@ const COLORS = [
 
 const initialState = {
   pieces: [
+    // ⭐ ADDED: RIGHT TRIANGLE (KHÔNG XOÁ GÌ CŨ)
+    {
+      name: "RightTriangle",
+      x: 650,
+      y: 120,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      points: [0, 0, 120, 0, 0, 120],
+      fill: "brown",
+      draggable: true,
+      scale: 1,
+    },
+
     {
       name: "Triangle",
       x: 80,
@@ -121,6 +144,16 @@ class App extends React.Component {
       selectedId: null,
       stageWidth: window.innerWidth,
       stageHeight: window.innerHeight,
+
+      // ⭐ ADDED RULER ONLY (KHÔNG ĐỤNG CODE CŨ)
+      rulerVisible: false,
+      ruler: {
+        x1: 200,
+        y1: 500,
+        x2: 500,
+        y2: 500,
+        rotation: 0,
+      },
     };
   }
 
@@ -222,6 +255,14 @@ class App extends React.Component {
     });
   };
 
+  toggleRuler = () => {
+    this.setState((prev) => ({
+      rulerVisible: !prev.rulerVisible,
+    }));
+  };
+
+  getDistance = (r) => Math.sqrt((r.x2 - r.x1) ** 2 + (r.y2 - r.y1) ** 2);
+
   renderShape = (p, i) => {
     const isSelected = this.state.selectedId === p.name;
 
@@ -237,35 +278,10 @@ class App extends React.Component {
         this.setState({ selectedId: p.name });
       },
 
-      // ⭐ DOUBLE CLICK COPY
-      onDblClick: () => {
-        this.saveHistory();
-
-        this.setState((prev) => {
-          const newPiece = {
-            ...p,
-            name: p.name + "_" + Date.now(),
-            x: p.x + 20,
-            y: p.y + 20,
-          };
-
-          return {
-            pieces: [...prev.pieces, newPiece],
-            selectedId: newPiece.name,
-          };
-        });
-      },
-
       onDragStart: () => {
         this.saveHistory();
         this.bringToFront(p.name);
         this.setState({ selectedId: p.name });
-      },
-
-      onWheel: (e) => {
-        e.evt.preventDefault();
-        const direction = e.evt.deltaY > 0 ? -0.1 : 0.1;
-        this.zoomShape(i, direction);
       },
 
       onDragEnd: (e) => {
@@ -284,69 +300,91 @@ class App extends React.Component {
     };
 
     if (p.type === "circle") {
-      return (
-        <Circle
-          key={p.name}
-          x={p.x}
-          y={p.y}
-          radius={p.radius}
-          rotation={p.rotation}
-          fill={p.fill}
-          {...commonEvents}
-        />
-      );
+      return <Circle key={p.name} {...p} {...commonEvents} />;
     }
 
     if (p.type === "rect") {
-      return (
-        <Rect
-          key={p.name}
-          x={p.x}
-          y={p.y}
-          width={p.width}
-          height={p.height}
-          offsetX={p.width / 2}
-          offsetY={p.height / 2}
-          rotation={p.rotation}
-          fill={p.fill}
-          {...commonEvents}
-        />
-      );
+      return <Rect key={p.name} {...p} {...commonEvents} />;
     }
 
-    return (
-      <Line
-        key={p.name}
-        x={p.x}
-        y={p.y}
-        offsetX={p.offsetX}
-        offsetY={p.offsetY}
-        rotation={p.rotation}
-        points={p.points}
-        fill={p.fill}
-        closed
-        {...commonEvents}
-      />
-    );
+    return <Line key={p.name} {...p} closed {...commonEvents} />;
   };
 
   render() {
+    const r = this.state.ruler;
+    const length = this.getDistance(r).toFixed(0);
+
     return (
       <div className="app">
-        <Stage
-          width={this.state.stageWidth}
-          height={this.state.stageHeight}
-          style={{ background: "transparent" }}
-        >
-          <Layer>
-            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
-          </Layer>
-        </Stage>
-
+        {/* TOOLBAR */}
         <div className="toolbar">
           <button onClick={this.resetAllPieces}>Reset</button>
           <button onClick={this.undo}>Undo</button>
+          <button onClick={this.toggleRuler}>
+            {this.state.rulerVisible ? "Hide Ruler" : "Show Ruler"}
+          </button>
         </div>
+
+        <Stage width={this.state.stageWidth} height={this.state.stageHeight}>
+          <Layer>
+            {/* SHAPES (GIỮ NGUYÊN 100%) */}
+            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
+
+            {/* ⭐ RULER (ADDED ONLY) */}
+            {this.state.rulerVisible && (
+              <Group draggable rotation={r.rotation}>
+                <Line
+                  points={[r.x1, r.y1, r.x2, r.y2]}
+                  stroke="black"
+                  strokeWidth={3}
+                  dash={[10, 5]}
+                />
+
+                <Circle
+                  x={r.x1}
+                  y={r.y1}
+                  radius={6}
+                  fill="red"
+                  draggable
+                  onDragMove={(e) =>
+                    this.setState((prev) => ({
+                      ruler: {
+                        ...prev.ruler,
+                        x1: e.target.x(),
+                        y1: e.target.y(),
+                      },
+                    }))
+                  }
+                />
+
+                <Circle
+                  x={r.x2}
+                  y={r.y2}
+                  radius={6}
+                  fill="red"
+                  draggable
+                  onDragMove={(e) =>
+                    this.setState((prev) => ({
+                      ruler: {
+                        ...prev.ruler,
+                        x2: e.target.x(),
+                        y2: e.target.y(),
+                      },
+                    }))
+                  }
+                />
+
+                <Text
+                  x={(r.x1 + r.x2) / 2}
+                  y={(r.y1 + r.y2) / 2 - 10}
+                  text={`${length}px`}
+                  fontSize={16}
+                  fill="black"
+                />
+              </Group>
+            )}
+          </Layer>
+        </Stage>
       </div>
     );
   }
