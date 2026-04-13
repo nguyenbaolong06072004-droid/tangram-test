@@ -1,6 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Stage, Layer, Line, Rect, Circle, Text, useStrictMode } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Line,
+  Rect,
+  Circle,
+  Text,
+  useStrictMode,
+} from "react-konva";
 import "./styles.css";
 
 useStrictMode(true);
@@ -19,9 +27,9 @@ const PX_PER_CM = 37.8;
 
 const initialState = {
   pieces: [
+    // ⭐ TAM GIÁC VUÔNG
     {
       name: "RightTriangle",
-      type: "rightTriangle",
       x: 650,
       y: 120,
       offsetX: 0,
@@ -32,6 +40,7 @@ const initialState = {
       draggable: true,
       scale: 1,
     },
+
     {
       name: "Triangle",
       x: 80,
@@ -128,7 +137,7 @@ class App extends React.Component {
       stageWidth: window.innerWidth,
       stageHeight: window.innerHeight,
 
-      // ⭐ THÊM RULER
+      // ⭐ RULER
       rulerVisible: false,
       ruler: {
         x1: 200,
@@ -244,11 +253,37 @@ class App extends React.Component {
       scaleY: p.scale,
       stroke: isSelected ? "red" : undefined,
       strokeWidth: isSelected ? 3 : 0,
-      onClick: () =>
-        this.setState({ selectedId: p.name }, () =>
-          this.bringToFront(p.name)
-        ),
-      onDragStart: this.saveHistory,
+
+      onClick: () => {
+        this.bringToFront(p.name);
+        this.setState({ selectedId: p.name });
+      },
+
+      // ⭐ COPY SHAPE
+      onDblClick: () => {
+        this.saveHistory();
+
+        this.setState((prev) => {
+          const newPiece = {
+            ...p,
+            name: p.name + "_" + Date.now(),
+            x: p.x + 20,
+            y: p.y + 20,
+          };
+
+          return {
+            pieces: [...prev.pieces, newPiece],
+            selectedId: newPiece.name,
+          };
+        });
+      },
+
+      onDragStart: () => {
+        this.saveHistory();
+        this.bringToFront(p.name);
+        this.setState({ selectedId: p.name });
+      },
+
       onDragEnd: (e) => {
         this.setState((prev) => ({
           pieces: prev.pieces.map((piece) =>
@@ -262,22 +297,15 @@ class App extends React.Component {
           ),
         }));
       },
+
       onWheel: this.handleWheel,
     };
 
     if (p.type === "circle") return <Circle key={p.name} {...p} {...common} />;
 
-    if (p.type === "rect")
-      return <Rect key={p.name} {...p} {...common} />;
+    if (p.type === "rect") return <Rect key={p.name} {...p} {...common} />;
 
-    return (
-      <Line
-        key={p.name}
-        {...p}
-        closed
-        {...common}
-      />
-    );
+    return <Line key={p.name} {...p} closed {...common} />;
   };
 
   render() {
@@ -301,9 +329,7 @@ class App extends React.Component {
 
         <Stage width={this.state.stageWidth} height={this.state.stageHeight}>
           <Layer>
-            {this.state.pieces.map((p, i) =>
-              this.renderShape(p, i)
-            )}
+            {this.state.pieces.map((p, i) => this.renderShape(p, i))}
 
             {/* ⭐ RULER */}
             {this.state.rulerVisible && (
@@ -354,6 +380,7 @@ class App extends React.Component {
                   y={(r.y1 + r.y2) / 2 - 10}
                   text={`${(this.getDistance(r) / PX_PER_CM).toFixed(2)} cm`}
                   fontSize={16}
+                  fill="black"
                 />
               </>
             )}
